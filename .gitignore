@@ -1,0 +1,12 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+.env/
+__init__.py
+.DS_Store
+coded.txt
+coder.py
+README-private.md
+/downloaded/*
+/.vscode

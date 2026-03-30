@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hermes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0d0d0d;
+            --surface: #141414;
+            --border: #222;
+            --accent: #e8ff47;
+            --accent2: #ff4747;
+            --text: #e8e8e8;
+            --muted: #555;
+            --mono: 'DM Mono', monospace;
+            --display: 'Bebas Neue', sans-serif;
+            --radius: 4px;
+            --speed: 160ms;
+        }
+
+        html,
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 13px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .wordmark {
+            font-family: var(--display);
+            font-size: 28px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .search-wrap {
+            flex: 1;
+            max-width: 560px;
+            position: relative;
+        }
+
+        .search-wrap input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 13px;
+            padding: 9px 14px 9px 38px;
+            outline: none;
+            transition: border-color var(--speed);
+        }
+
+        .search-wrap input:focus {
+            border-color: var(--accent);
+        }
+
+        .search-wrap input::placeholder {
+            color: var(--muted);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            pointer-events: none;
+        }
+
+        .search-clear {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 2px 4px;
+            display: none;
+        }
+
+        .search-clear:hover {
+            color: var(--text);
+        }
+
+        .header-count {
+            color: var(--muted);
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        main {
+            padding: 28px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .section-label {
+            font-family: var(--display);
+            font-size: 13px;
+            letter-spacing: 2px;
+            color: var(--muted);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        #library {}
+
+        .video-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--border);
+            border-radius: var(--radius);
+            transition: background var(--speed);
+            animation: fadeSlide .2s ease both;
+        }
+
+        .video-row:hover {
+            background: var(--surface);
+        }
+
+        .video-row .title {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+
+        .video-row .meta {
+            color: var(--muted);
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        #search-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .result-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: fadeSlide .18s ease both;
+            transition: border-color var(--speed), transform var(--speed);
+        }
+
+        .result-card:hover {
+            border-color: #333;
+            transform: translateY(-2px);
+        }
+
+        .thumb-wrap {
+            position: relative;
+            aspect-ratio: 16/9;
+            background: #111;
+            overflow: hidden;
+        }
+
+        .thumb-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            opacity: 0;
+            transition: opacity .3s;
+        }
+
+        .thumb-wrap img.loaded {
+            opacity: 1;
+        }
+
+        .duration-badge {
+            position: absolute;
+            bottom: 6px;
+            right: 6px;
+            background: rgba(0, 0, 0, .78);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 2px;
+            font-family: var(--mono);
+        }
+
+        .card-body {
+            padding: 10px 12px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .card-title {
+            font-weight: 500;
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            font-size: 12px;
+        }
+
+        .card-meta {
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: auto;
+        }
+
+        .card-footer {
+            padding: 0 12px 12px;
+        }
+
+        .btn {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: .5px;
+            border-radius: var(--radius);
+            border: 1px solid transparent;
+            cursor: pointer;
+            padding: 7px 14px;
+            transition: all var(--speed);
+            width: 100%;
+            text-align: center;
+        }
+
+        .btn-download {
+            background: var(--accent);
+            color: #0d0d0d;
+            border-color: var(--accent);
+        }
+
+        .btn-download:hover {
+            background: #d4e83f;
+            border-color: #d4e83f;
+        }
+
+        .btn-downloading {
+            background: transparent;
+            color: var(--accent);
+            border-color: var(--accent);
+            cursor: default;
+            opacity: .7;
+        }
+
+        .btn-downloading::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border: 1.5px solid var(--accent);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        .btn-done {
+            background: transparent;
+            color: var(--muted);
+            border-color: var(--border);
+            cursor: default;
+        }
+
+        .btn-done::before {
+            content: '✓  ';
+        }
+
+        .btn-error {
+            background: transparent;
+            color: var(--accent2);
+            border-color: var(--accent2);
+            cursor: pointer;
+        }
+
+        .empty-state {
+            color: var(--muted);
+            padding: 48px 0;
+            text-align: center;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .spinner-global {
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .spinner-global::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <span class="wordmark">HERMES</span>
+        <div class="search-wrap">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" id="search-input" placeholder="search youtube..." autocomplete="off"
+                spellcheck="false" />
+            <button class="search-clear" id="search-clear" title="clear">✕</button>
+        </div>
+        <span class="header-count" id="header-count"></span>
+    </header>
+
+    <main>
+        <div id="view-library">
+            <div class="section-label">LIBRARY</div>
+            <div id="library">
+                <div class="spinner-global"></div>
+            </div>
+        </div>
+
+        <div id="view-search" style="display:none">
+            <div class="section-label" id="search-label">RESULTS</div>
+            <div id="search-results"></div>
+        </div>
+    </main>
+
+    <script>
+        const API = '';
+
+        function fmt(seconds) {
+            if (!seconds) return '';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (h) return `${h}h ${m}m`;
+            return `${m}m ${String(s).padStart(2, '0')}s`;
+        }
+
+        function fmtViews(n) {
+            if (!n) return '';
+            if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M views`;
+            if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K views`;
+            return `${n} views`;
+        }
+
+        function lazyImg(img) {
+            img.onload = () => img.classList.add('loaded');
+            img.onerror = () => img.style.display = 'none';
+        }
+
+        async function loadLibrary() {
+            const el = document.getElementById('library');
+            try {
+                const res = await fetch(`${API}/api/videos`);
+                const videos = await res.json();
+                document.getElementById('header-count').textContent =
+                    `${videos.length} video${videos.length !== 1 ? 's' : ''}`;
+
+                if (!videos.length) {
+                    el.innerHTML = `<div class="empty-state">nothing downloaded yet</div>`;
+                    return;
+                }
+
+                el.innerHTML = videos.map((v, i) => `
+      <div class="video-row" style="animation-delay:${i * 18}ms">
+        <span class="title" title="${esc(v.title)}">${esc(v.title)}</span>
+        <span class="meta">${v.size_mb} MB</span>
+      </div>
+    `).join('');
+            } catch (e) {
+                el.innerHTML = `<div class="empty-state">could not reach server</div>`;
+            }
+        }
+
+        let searchTimeout;
+        let currentStatuses = {};
+
+        async function doSearch(q) {
+            if (!q.trim()) { showLibrary(); return; }
+            showSearchView();
+
+            const label = document.getElementById('search-label');
+            const resultsEl = document.getElementById('search-results');
+            label.textContent = `SEARCHING "${q.toUpperCase()}"...`;
+            resultsEl.innerHTML = `<div class="spinner-global" style="grid-column:1/-1"></div>`;
+
+            try {
+                const [searchRes, statusRes] = await Promise.all([
+                    fetch(`${API}/api/search?q=${encodeURIComponent(q)}&limit=30`),
+                    fetch(`${API}/api/status`),
+                ]);
+                const results = await searchRes.json();
+                currentStatuses = await statusRes.json();
+
+                label.textContent = `RESULTS FOR "${q.toUpperCase()}" — ${results.length}`;
+                document.getElementById('header-count').textContent =
+                    `${results.length} result${results.length !== 1 ? 's' : ''}`;
+
+                if (!results.length) {
+                    resultsEl.innerHTML = `<div class="empty-state" style="grid-column:1/-1">no results</div>`;
+                    return;
+                }
+
+                resultsEl.innerHTML = results.map((v, i) => {
+                    const status = currentStatuses[v.url] || (v.downloaded ? 'downloaded' : 'none');
+                    return renderCard(v, status, i);
+                }).join('');
+
+                resultsEl.querySelectorAll('img[data-src]').forEach(img => {
+                    img.src = img.dataset.src;
+                    lazyImg(img);
+                });
+            } catch (e) {
+                resultsEl.innerHTML = `<div class="empty-state" style="grid-column:1/-1">search failed — is the server running?</div>`;
+            }
+        }
+
+        function renderCard(v, status, i) {
+            const delay = i * 22;
+            const thumb = v.thumbnail
+                ? `<img data-src="${esc(v.thumbnail)}" alt="" />`
+                : '';
+            const dur = v.duration ? `<span class="duration-badge">${fmt(v.duration)}</span>` : '';
+
+            let btn = '';
+            if (status === 'downloading') {
+                btn = `<button class="btn btn-downloading" disabled>downloading</button>`;
+            } else if (status === 'done' || status === 'downloaded') {
+                btn = `<button class="btn btn-done" disabled>downloaded</button>`;
+            } else if (status === 'error') {
+                btn = `<button class="btn btn-error" onclick="startDownload('${esc(v.url)}', this)">retry</button>`;
+            } else {
+                btn = `<button class="btn btn-download" onclick="startDownload('${esc(v.url)}', this)">download</button>`;
+            }
+
+            return `
+    <div class="result-card" style="animation-delay:${delay}ms">
+      <div class="thumb-wrap">${thumb}${dur}</div>
+      <div class="card-body">
+        <div class="card-title">${esc(v.title)}</div>
+        <div class="card-meta">${esc(v.uploader)}${v.view_count ? ' ~ ' + fmtViews(v.view_count) : ''}</div>
+      </div>
+      <div class="card-footer">${btn}</div>
+    </div>
+  `;
+        }
+
+        async function startDownload(url, btn) {
+            btn.className = 'btn btn-downloading';
+            btn.disabled = true;
+            btn.textContent = 'downloading';
+
+            try {
+                const res = await fetch(`${API}/api/download`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url }),
+                });
+                const data = await res.json();
+
+                if (data.status === 'started' || data.status === 'already_downloading') {
+                    pollDownload(url, btn);
+                } else {
+                    btn.className = 'btn btn-error';
+                    btn.disabled = false;
+                    btn.textContent = 'retry';
+                }
+            } catch {
+                btn.className = 'btn btn-error';
+                btn.disabled = false;
+                btn.textContent = 'retry';
+            }
+        }
+
+        function pollDownload(url, btn) {
+            const interval = setInterval(async () => {
+                try {
+                    const res = await fetch(`${API}/api/status`);
+                    const statuses = await res.json();
+                    const status = statuses[url];
+                    if (status === 'done') {
+                        clearInterval(interval);
+                        btn.className = 'btn btn-done';
+                        btn.disabled = true;
+                        btn.textContent = 'downloaded';
+                        loadLibrary(); // refresh sidebar count
+                    } else if (status === 'error') {
+                        clearInterval(interval);
+                        btn.className = 'btn btn-error';
+                        btn.disabled = false;
+                        btn.textContent = 'retry';
+                        btn.onclick = () => startDownload(url, btn);
+                    }
+                } catch {}
+            }, 2000);
+        }
+
+        function showLibrary() {
+            document.getElementById('view-library').style.display = '';
+            document.getElementById('view-search').style.display = 'none';
+            document.getElementById('header-count').textContent = '';
+            loadLibrary();
+        }
+
+        function showSearchView() {
+            document.getElementById('view-library').style.display = 'none';
+            document.getElementById('view-search').style.display = '';
+        }
+
+        function esc(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        const input = document.getElementById('search-input');
+        const clearBtn = document.getElementById('search-clear');
+
+        input.addEventListener('input', () => {
+            clearBtn.style.display = input.value ? 'block' : 'none';
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => doSearch(input.value), 500);
+        });
+
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { clearBtn.click(); }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            clearBtn.style.display = 'none';
+            showLibrary();
+            input.focus();
+        });
+
+        loadLibrary();
+    </script>
+</body>
+
+</html>
