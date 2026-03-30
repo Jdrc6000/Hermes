@@ -22,9 +22,20 @@ download_opts = {
     # 'format': 'bestvideo[height<=1080]+bestaudio/best' # 1080p
     # 'format': 'bestvideo[height<=480]+bestaudio/best' # 480p
     # 'format': 'best' # just get the best quality
-    'format': 'bestvideo+bestaudio/best[acodec!=none]', # just get the best quality + aud
+    'format': 'bestvideo+bestaudio/best',
     'outtmpl': fr'{downloads_path}/%(title)s_%(uploader)s.%(ext)s',
+    'merge_output_format': 'mp4',
     'concurrent_fragment_downloads': 64, # make it speedy
+    
+    # because its picky
+    'cookiesfrombrowser': ('firefox',),
+    'extractor_args': {
+        'youtube': {
+            'player_client': ['web'],
+        }
+    },
+    'allow_unplayable_formats': False,
+    'remote_components': ['ejs:github'],
     
     'progress_hooks': [progress_hook],
     'noprogress': True, # silences yt_dlp's own bar, hooks still fire
@@ -34,6 +45,9 @@ download_opts = {
 
 search_opts = {
     'extract_flat': True, # dont fetch everything, just metadata
+    
+    'cookiesfrombrowser': ('firefox',),
+    'remote_components': ['ejs:github'],
     
     # shut it up
     'quiet': True,

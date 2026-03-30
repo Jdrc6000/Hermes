@@ -109,6 +109,10 @@ def trigger_download():
 def get_status():
     return jsonify(download_status)
 
+@app.get("/player")
+def player_page():
+    return app.send_static_file("player.html")
+
 @app.get("/api/stream/<path:filename>")
 def stream_video(filename):
     fpath = os.path.join(DOWNLOADS_PATH, filename)

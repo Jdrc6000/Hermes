@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hermes Player</title>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            background: #000;
+            color: #e8e8e8;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.65rem 1rem;
+            background: #111;
+            border-bottom: 1px solid #1e1e1e;
+            flex-shrink: 0;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            color: #666;
+            text-decoration: none;
+            font-size: 0.8rem;
+            transition: color 0.12s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .back-btn:hover {
+            color: #ccc;
+        }
+
+        nav h1 {
+            flex: 1;
+            font-size: 0.88rem;
+            font-weight: 400;
+            color: #bbb;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .resume-pill {
+            display: none;
+            align-items: center;
+            gap: 0.4rem;
+            background: #1e1e1e;
+            border: 1px solid #2e2e2e;
+            border-radius: 20px;
+            padding: 0.28rem 0.7rem;
+            font-size: 0.72rem;
+            color: #999;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s;
+            white-space: nowrap;
+        }
+
+        .resume-pill:hover {
+            background: #2a2a2a;
+            color: #ddd;
+        }
+
+        .resume-pill.visible {
+            display: flex;
+        }
+
+        .video-wrap {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            min-height: 0;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .error-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            color: #555;
+        }
+
+        .error-state a {
+            color: #666;
+            text-decoration: underline;
+            font-size: 0.82rem;
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <a class="back-btn" href="/">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Library
+        </a>
+        <h1 id="nav-title"></h1>
+        <button class="resume-pill" id="resume-pill">
+            ▶ Resume from <span id="resume-time"></span>
+        </button>
+    </nav>
+
+    <div class="video-wrap" id="video-wrap">
+        <video id="player" controls preload="auto"></video>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'hermes_progress';
+        function loadAllProgress() {
+            try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
+        }
+        function saveProgress(filename, seconds) {
+            const data = loadAllProgress();
+            data[filename] = seconds;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+        function fmtTime(s) {
+            s = Math.floor(s);
+            const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+            if (h) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+            return `${m}:${String(sec).padStart(2, '0')}`;
+        }
+
+        const p = new URLSearchParams(location.search);
+        const fname = p.get('f');
+        const title = p.get('title') || fname || 'Video';
+
+        if (!fname) {
+            document.getElementById('video-wrap').innerHTML =
+                `<div class="error-state"><p>No video specified.</p><a href="/">← Back to library</a></div>`;
+        } else {
+            document.title = title + ' — Hermes';
+            document.getElementById('nav-title').textContent = title;
+
+            const player = document.getElementById('player');
+            const resumeBtn = document.getElementById('resume-pill');
+            const resumeSpan = document.getElementById('resume-time');
+
+            player.src = `/api/stream/${encodeURIComponent(fname)}`;
+
+            const saved = loadAllProgress()[fname] || 0;
+            if (saved > 10) {
+                resumeSpan.textContent = fmtTime(saved);
+                resumeBtn.classList.add('visible');
+                resumeBtn.onclick = () => {
+                    player.currentTime = saved;
+                    player.play();
+                    resumeBtn.classList.remove('visible');
+                };
+            }
+
+            player.addEventListener('loadedmetadata', () => {
+                if (saved > 10 && saved < player.duration - 10)
+                    player.currentTime = saved;
+            });
+
+            player.addEventListener('seeked', () => resumeBtn.classList.remove('visible'));
+
+            let lastSaved = 0;
+            player.addEventListener('timeupdate', () => {
+                if (player.currentTime - lastSaved > 5) {
+                    saveProgress(fname, player.currentTime);
+                    lastSaved = player.currentTime;
+                }
+            });
+            player.addEventListener('pause', () => saveProgress(fname, player.currentTime));
+            window.addEventListener('beforeunload', () => saveProgress(fname, player.currentTime));
+        }
+    </script>
+</body>
+
+</html>
