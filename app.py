@@ -1,13 +1,13 @@
-import os
-import threading
-from flask import Flask, jsonify, request
+import os, threading
+from pathlib import Path
+from flask import Flask, jsonify, request, send_file, Response
 from flask_cors import CORS
 from downloader import download, search
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
 
-DOWNLOADS_PATH = "/Users/joshuacarter/Desktop/Coding/Code Vault/projects/hermes/downloaded"
+DOWNLOADS_PATH = Path(__file__).parent / "downloaded"
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".webm", ".avi", ".mov"}
 
 # url -> "downloading" | "done" | "error"
@@ -108,6 +108,40 @@ def trigger_download():
 @app.get("/api/status")
 def get_status():
     return jsonify(download_status)
+
+@app.get("/api/stream/<path:filename>")
+def stream_video(filename):
+    fpath = os.path.join(DOWNLOADS_PATH, filename)
+    if not os.path.isfile(fpath):
+        return jsonify({"error": "not found"}), 404
+
+    file_size = os.path.getsize(fpath)
+    range_header = request.headers.get("Range")
+
+    if range_header:
+        byte_range = range_header.replace("bytes=", "").split("-")
+        start = int(byte_range[0])
+        end = int(byte_range[1]) if byte_range[1] else file_size - 1
+        length = end - start + 1
+
+        def generate():
+            with open(fpath, "rb") as f:
+                f.seek(start)
+                remaining = length
+                while remaining:
+                    chunk = f.read(min(65536, remaining))
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+                    yield chunk
+
+        resp = Response(generate(), 206, mimetype="video/mp4")
+        resp.headers["Content-Range"] = f"bytes {start}-{end}/{file_size}"
+        resp.headers["Accept-Ranges"] = "bytes"
+        resp.headers["Content-Length"] = str(length)
+        return resp
+
+    return send_file(fpath)
 
 @app.get("/")
 def index():

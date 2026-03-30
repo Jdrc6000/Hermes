@@ -145,10 +145,22 @@
             border-radius: 4px;
             transition: background 0.12s;
             animation: fadeSlide 0.18s ease both;
+            cursor: pointer;
         }
 
         .video-row:hover {
             background: #f0f0f0;
+        }
+
+        .video-row:hover .play-icon {
+            opacity: 1;
+        }
+
+        .play-icon {
+            flex-shrink: 0;
+            opacity: 0;
+            color: #555;
+            transition: opacity 0.12s;
         }
 
         .video-row .title {
@@ -345,6 +357,87 @@
             font-size: 0.82rem;
         }
 
+        /* ── Player Modal ── */
+        #player-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.88);
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            animation: fadein 0.15s ease;
+        }
+
+        #player-modal.open {
+            display: flex;
+        }
+
+        #player-wrap {
+            position: relative;
+            width: 100%;
+            max-width: 960px;
+            background: #111;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #player-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.75rem;
+            background: #1a1a1a;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        #player-title {
+            flex: 1;
+            font-size: 0.82rem;
+            color: #ccc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #player-close {
+            background: none;
+            border: none;
+            color: #777;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            transition: color 0.12s, background 0.12s;
+        }
+
+        #player-close:hover {
+            color: #fff;
+            background: #333;
+        }
+
+        #player-video {
+            width: 100%;
+            display: block;
+            background: #000;
+            max-height: 75vh;
+        }
+
+        @keyframes fadein {
+            from {
+                opacity: 0
+            }
+
+            to {
+                opacity: 1
+            }
+        }
+
         @keyframes spin {
             to {
                 transform: rotate(360deg);
@@ -398,6 +491,17 @@
         <p>© 2026 Hermes</p>
     </footer>
 
+    <!-- Video Player Modal -->
+    <div id="player-modal" role="dialog" aria-modal="true">
+        <div id="player-wrap">
+            <div id="player-header">
+                <span id="player-title"></span>
+                <button id="player-close" title="Close (Esc)">✕</button>
+            </div>
+            <video id="player-video" controls preload="metadata"></video>
+        </div>
+    </div>
+
     <script>
         const API = '';
 
@@ -409,19 +513,45 @@
             if (h) return `${h}h ${m}m`;
             return `${m}m ${String(s).padStart(2, '0')}s`;
         }
-
         function fmtViews(n) {
             if (!n) return '';
             if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M views`;
             if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K views`;
             return `${n} views`;
         }
-
         function lazyImg(img) {
             img.onload = () => img.classList.add('loaded');
             img.onerror = () => img.style.display = 'none';
         }
+        function esc(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
 
+        // ── Player ──
+        const modal = document.getElementById('player-modal');
+        const video = document.getElementById('player-video');
+        const pTitle = document.getElementById('player-title');
+        const pClose = document.getElementById('player-close');
+
+        function openPlayer(filename, title) {
+            video.src = `${API}/api/stream/${encodeURIComponent(filename)}`;
+            pTitle.textContent = title;
+            modal.classList.add('open');
+            video.focus();
+        }
+        function closePlayer() {
+            modal.classList.remove('open');
+            video.pause();
+            video.src = '';
+        }
+
+        pClose.addEventListener('click', closePlayer);
+        modal.addEventListener('click', e => { if (e.target === modal) closePlayer(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closePlayer(); });
+
+        // ── Library ──
         async function loadLibrary() {
             const el = document.getElementById('library');
             try {
@@ -434,8 +564,13 @@
                     return;
                 }
                 el.innerHTML = videos.map((v, i) => `
-                    <div class="video-row" style="animation-delay:${i * 16}ms">
-                        <span class="title" title="${esc(v.title)}">${esc(v.title)}</span>
+                    <div class="video-row" style="animation-delay:${i * 16}ms"
+                         onclick="openPlayer('${esc(v.filename)}', '${esc(v.title)}')"
+                         title="Play ${esc(v.title)}">
+                        <svg class="play-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5,3 19,12 5,21"/>
+                        </svg>
+                        <span class="title">${esc(v.title)}</span>
                         <span class="meta">${v.size_mb} MB</span>
                     </div>
                 `).join('');
@@ -444,6 +579,7 @@
             }
         }
 
+        // ── Search ──
         let searchTimeout;
         let currentStatuses = {};
 
@@ -482,9 +618,7 @@
         }
 
         function renderCard(v, status, i) {
-            const thumb = v.thumbnail
-                ? `<img data-src="${esc(v.thumbnail)}" alt="" />`
-                : '';
+            const thumb = v.thumbnail ? `<img data-src="${esc(v.thumbnail)}" alt="" />` : '';
             const dur = v.duration ? `<span class="duration-badge">${fmt(v.duration)}</span>` : '';
             let btn = '';
             if (status === 'downloading') {
@@ -562,31 +696,19 @@
             document.getElementById('header-count').textContent = '';
             loadLibrary();
         }
-
         function showSearchView() {
             document.getElementById('view-library').style.display = 'none';
             document.getElementById('view-search').style.display = '';
         }
 
-        function esc(s) {
-            return String(s ?? '')
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
-
         const input = document.getElementById('search-input');
         const clearBtn = document.getElementById('search-clear');
-
         input.addEventListener('input', () => {
             clearBtn.style.display = input.value ? 'block' : 'none';
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => doSearch(input.value), 500);
         });
-
-        input.addEventListener('keydown', e => {
-            if (e.key === 'Escape') clearBtn.click();
-        });
-
+        input.addEventListener('keydown', e => { if (e.key === 'Escape') clearBtn.click(); });
         clearBtn.addEventListener('click', () => {
             input.value = '';
             clearBtn.style.display = 'none';
