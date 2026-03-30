@@ -113,4 +113,4 @@ def get_status():
 def index():
     return app.send_static_file("index.html")
 
-app.run(port=6000)
+app.run(port=5488)
